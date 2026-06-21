@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoTrace AI — Carbon Footprint Tracker</title>
+  <meta name="description" content="Track your carbon footprint and get AI-powered insights to reduce your daily environmental impact." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    :root {
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --green-light: #E1F5EE;
+      --green-text: #085041;
+      --amber: #BA7517;
+      --amber-light: #FAEEDA;
+      --red: #E24B4A;
+      --red-light: #FCEBEB;
+      --red-dark: #A32D2D;
+      --blue: #378ADD;
+      --pink: #D4537E;
+      --gray: #888780;
+      --bg: #0f0f0f;
+      --bg2: #1a1a1a;
+      --bg3: #242424;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #f0f0f0;
+      --text2: #a0a0a0;
+      --text3: #666;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* TOP NAV */
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 0.5px solid var(--border); position: sticky; top: 0; background: rgba(15,15,15,0.95); z-index:10; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-logo-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--green); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+    .nav-logo-text { font-size: 16px; font-weight: 600; color: var(--text); }
+    .nav-logo-sub { font-size: 11px; color: var(--text2); }
+    .nav-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--green); color: var(--green); }
+
+    /* LAYOUT */
+    .container { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; background: var(--bg2); border-radius: var(--radius); padding: 4px; }
+    .tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 500; color: var(--text2); cursor: pointer; border: none; background: none; border-radius: var(--radius-sm); transition: all .2s; }
+    .tab.active { background: var(--green); color: #fff; }
+    .tab:hover:not(.active) { color: var(--text); background: var(--bg3); }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* CARDS */
+    .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+    .card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* METRICS */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 1rem; }
+    .metric { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-value { font-size: 24px; font-weight: 600; color: var(--text); line-height: 1; }
+    .metric-unit { font-size: 12px; color: var(--text2); font-weight: 400; }
+    .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+    /* BARS */
+    .bar-wrap { margin-bottom: 12px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+    .bar-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 6px; border-radius: 3px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+    /* FORM */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-group select, .form-group input {
+      background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+      color: var(--text); font-size: 14px; padding: 10px 12px; outline: none; width: 100%;
+    }
+    .form-group select:focus, .form-group input:focus { border-color: var(--green); }
+
+    /* BUTTONS */
+    .btn-primary { width: 100%; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); border: none; color: #fff; background: var(--green); margin-top: 8px; }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ai { width: 100%; padding: 12px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); border: 0.5px solid var(--green); color: var(--green); background: transparent; margin-top: 8px; }
+    .btn-ai:hover:not(:disabled) { background: rgba(29,158,117,0.1); }
+    .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* LOG ITEMS */
+    .log-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+    .log-item:last-child { border-bottom: none; }
+    .log-co2 { font-weight: 600; color: var(--green); }
+    .log-cat-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--bg3); color: var(--text3); margin-left: 6px; }
+
+    /* ECO SCORE */
+    .score-ring { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; border: 3px solid; flex-shrink: 0; }
+    .score-A { border-color: var(--green); color: var(--green); }
+    .score-B { border-color: #639922; color: #639922; }
+    .score-C { border-color: var(--amber); color: var(--amber); }
+    .score-D { border-color: var(--red); color: var(--red); }
+    .score-F { border-color: var(--red-dark); color: var(--red-dark); }
+
+    /* INSIGHT CARDS */
+    .insight-card { border-left: 3px solid var(--green); padding: .875rem 1rem; background: var(--bg3); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+    .insight-card.warn { border-left-color: var(--amber); }
+    .insight-card.praise { border-left-color: var(--blue); }
+    .insight-saving { font-size: 11px; color: var(--green); margin-top: 5px; font-weight: 600; }
+    .insight-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-bottom: 6px; }
+    .badge-tip { background: rgba(29,158,117,0.15); color: var(--green); }
+    .badge-warn { background: rgba(186,117,23,0.15); color: var(--amber); }
+    .badge-praise { background: rgba(55,138,221,0.15); color: var(--blue); }
+
+    /* COMPARE */
+    .compare-bar { height: 10px; border-radius: 5px; margin-bottom: 5px; min-width: 4px; transition: width .8s ease; }
+
+    /* STREAK */
+    .streak-dots { display: flex; gap: 4px; margin-top: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 13px; }
+    .empty i { font-size: 32px; display: block; margin-bottom: 8px; }
+
+    /* HERO BANNER */
+    .hero { text-align: center; padding: 2.5rem 1rem 1.5rem; }
+    .hero h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .hero h2 span { color: var(--green); }
+    .hero p { font-size: 14px; color: var(--text2); max-width: 420px; margin: 0 auto; }
+
+    /* CHART WRAPPER */
+    .chart-wrap { position: relative; width: 100%; height: 200px; }
+
+    /* LEADERBOARD */
+    .lb-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+    .lb-item:last-child { border-bottom: none; }
+    .lb-rank { font-size: 16px; font-weight: 700; width: 28px; text-align: center; flex-shrink: 0; }
+    .lb-rank.gold { color: #F5C542; }
+    .lb-rank.silver { color: #B0BEC5; }
+    .lb-rank.bronze { color: #CD7F32; }
+    .lb-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .lb-name { font-size: 13px; font-weight: 500; flex: 1; }
+    .lb-score { font-size: 12px; color: var(--green); font-weight: 600; }
+    .lb-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: rgba(29,158,117,0.15); color: var(--green); margin-left: 4px; }
+    .lb-you { background: rgba(29,158,117,0.06); border-radius: var(--radius-sm); margin: 0 -4px; padding: 10px 4px; }
+    .name-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .name-input-row input { flex: 1; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; padding: 9px 12px; outline: none; }
+    .name-input-row input:focus { border-color: var(--green); }
+    .btn-sm { padding: 9px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); border: none; color: #fff; background: var(--green); white-space: nowrap; }
+    .btn-sm:hover { background: var(--green-dark); }
+
+    /* OFFSET TRACKER */
+    .offset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 1rem; }
+    .offset-card { background: var(--bg3); border-radius: var(--radius-sm); padding: 1rem; text-align: center; cursor: pointer; border: 0.5px solid var(--border); transition: border-color .2s; }
+    .offset-card:hover { border-color: var(--green); }
+    .offset-card.done { border-color: var(--green); background: rgba(29,158,117,0.08); }
+    .offset-icon { font-size: 28px; margin-bottom: 6px; }
+    .offset-name { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+    .offset-kg { font-size: 11px; color: var(--green); }
+    .offset-count { font-size: 11px; color: var(--text3); margin-top: 4px; }
+    .tree-progress { height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+    .tree-fill { height: 8px; background: var(--green); border-radius: 4px; transition: width 1s ease; }
+
+    /* SHARE CARD */
+    .share-card { background: linear-gradient(135deg, #0f2d1f 0%, #0a1a10 100%); border: 0.5px solid rgba(29,158,117,0.3); border-radius: var(--radius); padding: 1.5rem; text-align: center; margin-bottom: 1rem; }
+    .share-card-score { font-size: 56px; font-weight: 800; color: var(--green); line-height: 1; }
+    .share-card-label { font-size: 12px; color: rgba(255,255,255,0.5); margin: 4px 0 12px; text-transform: uppercase; letter-spacing: 0.1em; }
+    .share-card-stats { display: flex; justify-content: center; gap: 24px; margin: 12px 0; }
+    .share-stat { text-align: center; }
+    .share-stat-val { font-size: 18px; font-weight: 700; color: #fff; }
+    .share-stat-label { font-size: 10px; color: rgba(255,255,255,0.4); }
+    .share-tag { font-size: 11px; color: rgba(29,158,117,0.7); margin-top: 10px; }
+    .share-btns { display: flex; gap: 8px; }
+    .btn-share { flex: 1; padding: 11px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); border: 0.5px solid var(--border2); color: var(--text); background: var(--bg3); }
+    .btn-share:hover { border-color: var(--green); color: var(--green); }
+    .btn-share.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn-share.primary:hover { background: var(--green-dark); }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .hero h2 { font-size: 22px; }
+      .tab span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-icon"><i class="ti ti-leaf"></i></div>
+    <div>
+      <div class="nav-logo-text">EcoTrace AI</div>
+      <div class="nav-logo-sub">Carbon Footprint Tracker</div>
+    </div>
+  </div>
+  <div class="nav-badge">🇮🇳 India</div>
+</nav>
+
+<div class="container">
+  <div class="hero">
+    <h2>Track. Understand. <span>Act.</span></h2>
+    <p>Log your daily activities and get AI-powered insights to reduce your carbon footprint — one day at a time.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('dashboard')"><i class="ti ti-chart-pie"></i><span> Dashboard</span></button>
+    <button class="tab" onclick="showTab('log')"><i class="ti ti-plus"></i><span> Log</span></button>
+    <button class="tab" onclick="showTab('insights')"><i class="ti ti-bulb"></i><span> AI Insights</span></button>
+    <button class="tab" onclick="showTab('offset')"><i class="ti ti-trees"></i><span> Offset</span></button>
+    <button class="tab" onclick="showTab('leaderboard')"><i class="ti ti-trophy"></i><span> Board</span></button>
+    <button class="tab" onclick="showTab('share')"><i class="ti ti-share"></i><span> Share</span></button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="section active" id="tab-dashboard">
+    <div class="metric-grid" id="metrics"></div>
+    <div class="card">
+      <div class="card-title">Footprint breakdown</div>
+      <div id="category-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">You vs. India average (5.2 kg/day)</div>
+      <div id="compare-chart"></div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="section" id="tab-log">
+    <div class="card">
+      <div class="card-title">Log an activity</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="cat-select" onchange="updateSubcat()">
+            <option value="transport">🚗 Transport</option>
+            <option value="food">🍛 Food</option>
+            <option value="energy">⚡ Energy</option>
+            <option value="shopping">🛍️ Shopping</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Activity</label>
+          <select id="subcat-select" onchange="updatePreview()"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label id="qty-label">Quantity</label>
+          <input type="number" id="qty-input" value="10" min="0.1" step="0.1" oninput="updatePreview()">
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <label>CO₂ estimate</label>
+          <div style="display:flex;align-items:center;gap:6px;font-size:18px;font-weight:600;color:var(--green);padding:10px 0">
+            <i class="ti ti-leaf" style="font-size:16px"></i>
+            <span id="preview-co2">— kg</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="addActivity()"><i class="ti ti-plus"></i> Add to today's log</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Today's log</div>
+      <div id="today-log"></div>
+    </div>
+  </div>
+
+  <!-- AI INSIGHTS -->
+  <div class="section" id="tab-insights">
+    <div class="card" style="display:flex;align-items:center;gap:20px">
+      <div id="score-ring" class="score-ring score-A">—</div>
+      <div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:4px">Eco Score</div>
+        <div style="font-size:13px;color:var(--text2)" id="score-desc">Log activities to get your score</div>
+        <div class="streak-dots" id="streak-dots"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-robot" style="color:var(--green)"></i> AI-powered insights</div>
+      <div id="insights-list"><p class="empty"><i class="ti ti-bulb"></i>Log some activities first, then tap below to get insights!</p></div>
+      <button class="btn-ai" id="ai-btn" onclick="getAIInsights()">✦ Generate personalized insights</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section" id="tab-history">
+    <div class="card">
+      <div class="card-title">Activity history</div>
+      <div id="history-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">7-day trend vs India average</div>
+      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="7-day carbon footprint trend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- OFFSET TRACKER -->
+  <div class="section" id="tab-offset">
+    <div class="card">
+      <div class="card-title">🌳 Trees planted</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+        <div style="font-size:48px;font-weight:800;color:var(--green)" id="tree-count">0</div>
+        <div>
+          <div style="font-size:13px;color:var(--text2)">trees equivalent offset</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">1 tree absorbs ~21 kg CO₂/year</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Progress to next tree</div>
+      <div class="tree-progress"><div class="tree-fill" id="tree-progress-bar" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--text3)" id="tree-progress-text">Log activities to track offsets</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Log an offset action</div>
+      <div class="offset-grid" id="offset-grid"></div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;text-align:center">Tap an action to log it and earn CO₂ credits</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Your offsets today</div>
+      <div id="offset-log"></div>
+    </div>
+    <div class="card" style="background:rgba(29,158,117,0.06);border-color:rgba(29,158,117,0.2)">
+      <div class="card-title">Net footprint</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:6px">
+        <span>Gross emissions today</span><span id="net-gross" style="color:var(--red)">0.00 kg</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:6px">
+        <span>Offset credits</span><span id="net-offset" style="color:var(--green)">- 0.00 kg</span>
+      </div>
+      <div style="border-top:0.5px solid var(--border);padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:600">
+        <span>Net CO₂</span><span id="net-total">0.00 kg</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="section" id="tab-leaderboard">
+    <div class="card">
+      <div class="card-title">Join the community</div>
+      <div class="name-input-row">
+        <input type="text" id="lb-name-input" placeholder="Your name (e.g. Vicky)" maxlength="20" />
+        <button class="btn-sm" onclick="submitToLeaderboard()"><i class="ti ti-upload"></i> Post score</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Your today's eco score and footprint will be shared publicly with your name.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-trophy" style="color:#F5C542"></i> Top eco warriors — today</div>
+      <div id="leaderboard-list"><p class="empty"><i class="ti ti-trophy"></i>Loading leaderboard...</p></div>
+    </div>
+  </div>
+
+  <!-- SHARE -->
+  <div class="section" id="tab-share">
+    <div class="card">
+      <div class="card-title">Your score card</div>
+      <div class="share-card" id="share-card-preview">
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:12px;letter-spacing:0.1em">ECOTRACE AI · INDIA</div>
+        <div class="share-card-score" id="sc-score">—</div>
+        <div class="share-card-label">Eco Score</div>
+        <div class="share-card-stats">
+          <div class="share-stat"><div class="share-stat-val" id="sc-co2">0.00</div><div class="share-stat-label">kg CO₂ today</div></div>
+          <div class="share-stat"><div class="share-stat-val" id="sc-streak">0</div><div class="share-stat-label">day streak</div></div>
+          <div class="share-stat"><div class="share-stat-val" id="sc-trees">0</div><div class="share-stat-label">trees offset</div></div>
+        </div>
+        <div class="share-tag">#EcoTraceAI #PromptWars #BuildWithAI</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Share your progress</div>
+      <div class="share-btns" style="margin-bottom:10px">
+        <button class="btn-share primary" onclick="shareTwitter()"><i class="ti ti-brand-twitter"></i> Post on X</button>
+        <button class="btn-share" onclick="shareWhatsapp()"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+        <button class="btn-share" onclick="copyShareText()"><i class="ti ti-copy"></i> Copy text</button>
+      </div>
+      <div id="share-copied" style="font-size:12px;color:var(--green);display:none;text-align:center;padding:4px">✅ Copied to clipboard!</div>
+    </div>
+    <div class="card">
+      <div class="card-title">History</div>
+      <div id="history-list2"></div>
+      <div class="chart-wrap" style="margin-top:12px"><canvas id="trend-chart" role="img" aria-label="7-day carbon footprint trend"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align:center;padding:2rem;font-size:12px;color:var(--text3);border-top:0.5px solid var(--border);margin-top:2rem">
+  Built for PromptWars · Google for Developers × H2S · Powered by Claude AI
+</div>
+
+<script>
+const ACTIVITIES = {
+  transport: {
+    label: 'Distance (km)',
+    items: {
+      'Petrol car': 0.192, 'Diesel car': 0.171, 'Bike/Scooter': 0.113,
+      'Bus (city)': 0.089, 'Metro/Train': 0.035, 'Auto rickshaw': 0.095,
+      'Flight (short-haul)': 0.255, 'Cab/Taxi': 0.158, 'Walking/Cycle': 0
+    }
+  },
+  food: {
+    label: 'Servings',
+    items: {
+      'Beef meal': 6.61, 'Chicken meal': 1.41, 'Fish meal': 1.34,
+      'Egg meal': 0.45, 'Veg/Sabzi meal': 0.18, 'Dal/Lentils': 0.11,
+      'Dairy (250ml milk)': 0.32, 'Packaged/Junk food': 0.5, 'Fruits': 0.08
+    }
+  },
+  energy: {
+    label: 'Units / Hours',
+    items: {
+      'Electricity (kWh)': 0.82, 'LPG cooking (hrs)': 0.26,
+      'AC (hrs)': 1.2, 'Fan (hrs)': 0.032, 'Water heater (hrs)': 0.85,
+      'Laptop (hrs)': 0.023, 'TV (hrs)': 0.096, 'Washing machine (load)': 0.6
+    }
+  },
+  shopping: {
+    label: 'Items / Packages',
+    items: {
+      'New clothing item': 5.5, 'Online delivery package': 0.45,
+      'Electronics (per item)': 80, 'Plastic bag': 0.18,
+      'Newspaper/Books': 1.8, 'Reused/Secondhand item': 0
+    }
+  }
+};
+
+const OFFSETS = [
+  { icon:'🌳', name:'Plant a tree', kg:21, unit:'tree' },
+  { icon:'🚲', name:'Cycle instead of drive', kg:1.9, unit:'trip' },
+  { icon:'🥗', name:'Eat veg today', kg:2.5, unit:'day' },
+  { icon:'☀️', name:'Hang dry laundry', kg:0.6, unit:'load' },
+  { icon:'🛍️', name:'Refuse plastic bags', kg:0.18, unit:'time' },
+  { icon:'💡', name:'Switch off lights', kg:0.1, unit:'hr' },
+  { icon:'🚿', name:'Short shower (5min)', kg:0.18, unit:'shower' },
+  { icon:'♻️', name:'Segregate waste', kg:0.3, unit:'day' },
+];
+
+let logs = JSON.parse(localStorage.getItem('ecotrace_logs') || '[]');
+let offsets = JSON.parse(localStorage.getItem('ecotrace_offsets') || '[]');
+let lbName = localStorage.getItem('ecotrace_name') || '';
+
+function save() { localStorage.setItem('ecotrace_logs', JSON.stringify(logs)); }
+function saveOffsets() { localStorage.setItem('ecotrace_offsets', JSON.stringify(offsets)); }
+function today() { return new Date().toISOString().slice(0,10); }
+function todayLogs() { return logs.filter(l => l.date === today()); }
+function totalToday() { return todayLogs().reduce((s,l) => s+l.co2, 0); }
+function totalOffsetToday() { return offsets.filter(o=>o.date===today()).reduce((s,o)=>s+o.kg,0); }
+
+function updateSubcat() {
+  const cat = document.getElementById('cat-select').value;
+  const sub = document.getElementById('subcat-select');
+  document.getElementById('qty-label').textContent = ACTIVITIES[cat].label;
+  sub.innerHTML = Object.keys(ACTIVITIES[cat].items).map(k => `<option value="${k}">${k}</option>`).join('');
+  updatePreview();
+}
+
+function updatePreview() {
+  const cat = document.getElementById('cat-select').value;
+  const sub = document.getElementById('subcat-select').value;
+  const qty = parseFloat(document.getElementById('qty-input').value) || 0;
+  const factor = ACTIVITIES[cat].items[sub] || 0;
+  document.getElementById('preview-co2').textContent = (factor * qty).toFixed(3) + ' kg';
+}
+
+function addActivity() {
+  const cat = document.getElementById('cat-select').value;
+  const sub = document.getElementById('subcat-select').value;
+  const qty = parseFloat(document.getElementById('qty-input').value) || 0;
+  const co2 = parseFloat(((ACTIVITIES[cat].items[sub] || 0) * qty).toFixed(3));
+  logs.push({ date: today(), cat, sub, qty, co2, ts: Date.now() });
+  save(); renderAll(); showTab('dashboard');
+}
+
+function getScore(total) {
+  if (total <= 2) return 'A';
+  if (total <= 4) return 'B';
+  if (total <= 6) return 'C';
+  if (total <= 9) return 'D';
+  return 'F';
+}
+
+function scoreColor(s) {
+  return { A:'#1D9E75', B:'#639922', C:'#BA7517', D:'#E24B4A', F:'#A32D2D' }[s] || '#1D9E75';
+}
+
+function calcStreak() {
+  const dates = [...new Set(logs.map(l => l.date))].sort();
+  if (!dates.length) return 0;
+  let streak = 0, check = new Date(today());
+  while (true) {
+    const d = check.toISOString().slice(0,10);
+    if (dates.includes(d)) { streak++; check.setDate(check.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+function calcTotalTrees() {
+  const totalOffset = offsets.reduce((s,o)=>s+o.kg,0);
+  return parseFloat((totalOffset/21).toFixed(2));
+}
+
+function renderMetrics() {
+  const total = totalToday();
+  const score = getScore(total);
+  const streak = calcStreak();
+  const net = Math.max(0, total - totalOffsetToday());
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Today's CO₂</div>
+      <div class="metric-value">${total.toFixed(2)} <span class="metric-unit">kg</span></div>
+      <div class="metric-sub">${total < 5.2 ? '✅ Below India avg' : '⚠️ Above India avg'}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Activities</div>
+      <div class="metric-value">${todayLogs().length} <span class="metric-unit">logged</span></div>
+      <div class="metric-sub">today</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Eco Score</div>
+      <div class="metric-value" style="color:${scoreColor(score)}">${score}</div>
+      <div class="metric-sub">daily rating</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Net CO₂</div>
+      <div class="metric-value">${net.toFixed(2)} <span class="metric-unit">kg</span></div>
+      <div class="metric-sub">after offsets</div>
+    </div>
+  `;
+}
+
+function renderCatBars() {
+  const cats = { transport:0, food:0, energy:0, shopping:0 };
+  todayLogs().forEach(l => { cats[l.cat] = (cats[l.cat]||0) + l.co2; });
+  const total = totalToday() || 1;
+  const colors = { transport:'#378ADD', food:'#1D9E75', energy:'#BA7517', shopping:'#D4537E' };
+  const labels = { transport:'🚗 Transport', food:'🍛 Food', energy:'⚡ Energy', shopping:'🛍️ Shopping' };
+  const el = document.getElementById('category-bars');
+  if (!totalToday()) { el.innerHTML = '<p style="font-size:13px;color:var(--text3);text-align:center;padding:1rem">Log activities to see breakdown</p>'; return; }
+  el.innerHTML = Object.entries(cats).map(([k,v]) => {
+    const pct = Math.round((v/total)*100);
+    return `<div class="bar-wrap">
+      <div class="bar-label"><span>${labels[k]}</span><span>${v.toFixed(2)} kg (${pct}%)</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colors[k]}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderCompare() {
+  const total = totalToday();
+  const india = 5.2, global = 12.3;
+  const myPct = Math.min(100, Math.round((total/global)*100));
+  const indiaPct = Math.round((india/global)*100);
+  document.getElementById('compare-chart').innerHTML = `
+    <div style="font-size:12px;color:var(--text2);margin-bottom:4px">You — ${total.toFixed(2)} kg/day</div>
+    <div class="compare-bar" style="width:${Math.max(myPct,1)}%;background:var(--green)"></div>
+    <div style="font-size:12px;color:var(--text2);margin:10px 0 4px">India average — 5.2 kg/day</div>
+    <div class="compare-bar" style="width:${indiaPct}%;background:var(--red)"></div>
+    <div style="font-size:12px;color:var(--text2);margin:10px 0 4px">Global average — 12.3 kg/day</div>
+    <div class="compare-bar" style="width:100%;background:var(--gray)"></div>
+    <p style="font-size:12px;margin-top:12px;color:${total<india?'var(--green)':'var(--amber)'}">
+      ${total < india ? '✅ You\'re below the India average today — great work!' : `⚠ You're ${(total-india).toFixed(2)} kg above India's daily average.`}
+    </p>
+  `;
+}
+
+function renderTodayLog() {
+  const tl = todayLogs();
+  const icons = { transport:'ti-car', food:'ti-bowl-spoon', energy:'ti-bolt', shopping:'ti-shopping-bag' };
+  document.getElementById('today-log').innerHTML = !tl.length
+    ? '<p class="empty"><i class="ti ti-clipboard-list"></i>Nothing logged yet today</p>'
+    : tl.slice().reverse().map(l => `
+      <div class="log-item">
+        <span><i class="ti ${icons[l.cat]}" style="color:var(--text3);margin-right:6px"></i>${l.sub} ×${l.qty}<span class="log-cat-badge">${l.cat}</span></span>
+        <span class="log-co2">${l.co2.toFixed(3)} kg</span>
+      </div>`).join('');
+}
+
+function renderInsightScore() {
+  const total = totalToday();
+  const score = getScore(total);
+  const descs = { A:'Excellent! Very low impact today.', B:'Good job! Slightly above low impact.', C:'Moderate — some room to improve.', D:'High footprint today. Check insights!', F:'Very high impact. Check insights for tips.' };
+  document.getElementById('score-ring').textContent = score;
+  document.getElementById('score-ring').className = `score-ring score-${score}`;
+  document.getElementById('score-desc').textContent = descs[score];
+  const streak = calcStreak();
+  document.getElementById('streak-dots').innerHTML = Array.from({length:Math.min(7,Math.max(streak,1))},(_,i) =>
+    `<div class="dot" style="background:${i<streak?'var(--green)':'var(--bg3)'}"></div>`).join('');
+}
+
+function renderOffsets() {
+  const todayOffsets = offsets.filter(o=>o.date===today());
+  const totalKg = offsets.reduce((s,o)=>s+o.kg,0);
+  const trees = calcTotalTrees();
+  const treeWhole = Math.floor(trees);
+  const treeProgress = (trees - treeWhole) * 100;
+  document.getElementById('tree-count').textContent = treeWhole;
+  document.getElementById('tree-progress-bar').style.width = treeProgress.toFixed(0)+'%';
+  document.getElementById('tree-progress-text').textContent = `${(21 - (totalKg % 21)).toFixed(1)} kg more to offset your next tree`;
+
+  document.getElementById('offset-grid').innerHTML = OFFSETS.map((o,i) => {
+    const cnt = todayOffsets.filter(x=>x.name===o.name).length;
+    return `<div class="offset-card ${cnt?'done':''}" onclick="logOffset(${i})">
+      <div class="offset-icon">${o.icon}</div>
+      <div class="offset-name">${o.name}</div>
+      <div class="offset-kg">-${o.kg} kg CO₂</div>
+      ${cnt?`<div class="offset-count">✓ ×${cnt} today</div>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('offset-log').innerHTML = !todayOffsets.length
+    ? '<p class="empty" style="padding:1rem"><i class="ti ti-trees"></i>No offsets logged today</p>'
+    : todayOffsets.slice().reverse().map(o=>`
+      <div class="log-item">
+        <span>${o.icon} ${o.name}</span>
+        <span style="color:var(--green);font-weight:600">-${o.kg} kg</span>
+      </div>`).join('');
+
+  const gross = totalToday();
+  const off = totalOffsetToday();
+  const net = Math.max(0, gross - off);
+  document.getElementById('net-gross').textContent = gross.toFixed(2)+' kg';
+  document.getElementById('net-offset').textContent = '- '+off.toFixed(2)+' kg';
+  document.getElementById('net-total').textContent = net.toFixed(2)+' kg';
+  document.getElementById('net-total').style.color = net < gross ? 'var(--green)' : 'var(--red)';
+}
+
+function logOffset(i) {
+  const o = OFFSETS[i];
+  offsets.push({ date:today(), name:o.name, icon:o.icon, kg:o.kg, ts:Date.now() });
+  saveOffsets(); renderOffsets(); renderMetrics();
+}
+
+function renderShareCard() {
+  const total = totalToday();
+  const score = getScore(total);
+  const streak = calcStreak();
+  const trees = Math.floor(calcTotalTrees());
+  document.getElementById('sc-score').textContent = score;
+  document.getElementById('sc-score').style.color = scoreColor(score);
+  document.getElementById('sc-co2').textContent = total.toFixed(2);
+  document.getElementById('sc-streak').textContent = streak;
+  document.getElementById('sc-trees').textContent = trees;
+}
+
+function getShareText() {
+  const total = totalToday();
+  const score = getScore(total);
+  const streak = calcStreak();
+  const trees = Math.floor(calcTotalTrees());
+  return `🌿 My EcoTrace AI Score: ${score}\n📊 ${total.toFixed(2)} kg CO₂ today · ${streak} day streak · ${trees} trees offset\n\nTrack your carbon footprint → EcoTrace AI\n#EcoTraceAI #PromptWars #BuildWithAI`;
+}
+
+function shareTwitter() {
+  const text = encodeURIComponent(getShareText());
+  window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+}
+
+function shareWhatsapp() {
+  const text = encodeURIComponent(getShareText());
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+function copyShareText() {
+  navigator.clipboard.writeText(getShareText()).then(() => {
+    const el = document.getElementById('share-copied');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display='none', 2500);
+  });
+}
+
+// LEADERBOARD — uses shared storage key via Anthropic artifact API
+const LB_KEY = 'ecotrace_leaderboard_v2';
+
+async function loadLeaderboard() {
+  const list = document.getElementById('leaderboard-list');
+  try {
+    const result = await window.storage.get(LB_KEY, true);
+    const entries = result ? JSON.parse(result.value) : [];
+    renderLBEntries(entries);
+  } catch(e) {
+    renderLBEntries(getSampleBoard());
+  }
+}
+
+function getSampleBoard() {
+  return [
+    { name:'Priya S', score:'A', co2:1.8, streak:7, city:'Bangalore' },
+    { name:'Arjun K', score:'A', co2:2.1, streak:5, city:'Chennai' },
+    { name:'Meera R', score:'B', co2:3.4, streak:12, city:'Mumbai' },
+    { name:'Rahul T', score:'B', co2:3.9, streak:3, city:'Delhi' },
+    { name:'Divya N', score:'C', co2:5.1, streak:2, city:'Hyderabad' },
+  ];
+}
+
+async function submitToLeaderboard() {
+  const nameInput = document.getElementById('lb-name-input');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.style.borderColor='var(--red)'; setTimeout(()=>nameInput.style.borderColor='',1500); return; }
+  lbName = name;
+  localStorage.setItem('ecotrace_name', name);
+  const myEntry = { name, score:getScore(totalToday()), co2:parseFloat(totalToday().toFixed(2)), streak:calcStreak(), city:'India', ts:Date.now() };
+  try {
+    let entries = [];
+    try { const r = await window.storage.get(LB_KEY, true); entries = r ? JSON.parse(r.value) : []; } catch(e) { entries = getSampleBoard(); }
+    entries = entries.filter(e=>e.name!==name);
+    entries.push(myEntry);
+    entries.sort((a,b)=>{ const so={A:0,B:1,C:2,D:3,F:4}; return (so[a.score]-so[b.score]) || (a.co2-b.co2); });
+    entries = entries.slice(0,20);
+    await window.storage.set(LB_KEY, JSON.stringify(entries), true);
+    renderLBEntries(entries, name);
+  } catch(e) {
+    const entries = getSampleBoard();
+    entries.push(myEntry);
+    entries.sort((a,b)=>{ const so={A:0,B:1,C:2,D:3,F:4}; return (so[a.score]-so[b.score]) || (a.co2-b.co2); });
+    renderLBEntries(entries, name);
+  }
+  nameInput.value = '';
+}
+
+function renderLBEntries(entries, myName) {
+  if (!entries.length) { document.getElementById('leaderboard-list').innerHTML='<p class="empty"><i class="ti ti-trophy"></i>Be the first on the board!</p>'; return; }
+  const rankEmoji = ['🥇','🥈','🥉'];
+  const rankClass = ['gold','silver','bronze'];
+  document.getElementById('leaderboard-list').innerHTML = entries.slice(0,10).map((e,i)=>`
+    <div class="lb-item ${e.name===myName||e.name===lbName?'lb-you':''}">
+      <div class="lb-rank ${rankClass[i]||''}">${rankEmoji[i]||'#'+(i+1)}</div>
+      <div class="lb-avatar">${e.name.charAt(0).toUpperCase()}</div>
+      <div style="flex:1">
+        <div class="lb-name">${e.name} ${e.name===myName||e.name===lbName?'<span class="lb-badge">You</span>':''}</div>
+        <div style="font-size:11px;color:var(--text3)">${e.streak} day streak · ${e.city||'India'}</div>
+      </div>
+      <div class="lb-score" style="color:${scoreColor(e.score)}">${e.score} · ${e.co2} kg</div>
+    </div>`).join('');
+}
+
+function renderHistory() {
+  const icons = { transport:'ti-car', food:'ti-bowl-spoon', energy:'ti-bolt', shopping:'ti-shopping-bag' };
+  const html = !logs.length
+    ? '<p class="empty"><i class="ti ti-history"></i>No activities logged yet</p>'
+    : logs.slice().reverse().slice(0,40).map(l => `
+      <div class="log-item">
+        <span><i class="ti ${icons[l.cat]}" style="color:var(--text3);margin-right:6px"></i>
+        <strong style="font-weight:500">${l.sub}</strong> ×${l.qty}
+        <span class="log-cat-badge">${l.date}</span></span>
+        <span class="log-co2">${l.co2.toFixed(3)} kg</span>
+      </div>`).join('');
+  if (document.getElementById('history-list2')) document.getElementById('history-list2').innerHTML = html;
+}
+
+let trendChart = null;
+function renderTrendChart() {
+  const last7 = Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().slice(0,10);});
+  const totals = last7.map(d => parseFloat(logs.filter(l=>l.date===d).reduce((s,l)=>s+l.co2,0).toFixed(2)));
+  const labels = last7.map(d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short'}));
+  const canvas = document.getElementById('trend-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Your footprint', data:totals, borderColor:'#1D9E75', backgroundColor:'rgba(29,158,117,0.1)', tension:0.4, pointBackgroundColor:'#1D9E75', pointRadius:4, fill:true },
+        { label:'India avg', data:Array(7).fill(5.2), borderColor:'#E24B4A', borderDash:[5,5], pointRadius:0, fill:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        y:{ beginAtZero:true, ticks:{ font:{size:11}, color:'#666' }, grid:{ color:'rgba(255,255,255,0.05)' } },
+        x:{ ticks:{ font:{size:11}, color:'#666' }, grid:{ display:false } }
+      }
+    }
+  });
+}
+
+async function getAIInsights() {
+  const tl = todayLogs();
+  if (!tl.length) { document.getElementById('insights-list').innerHTML='<p class="empty"><i class="ti ti-bulb"></i>Log some activities first!</p>'; return; }
+  const btn = document.getElementById('ai-btn');
+  const list = document.getElementById('insights-list');
+  btn.disabled = true; btn.textContent = '⏳ Generating insights...';
+  list.innerHTML = '<div class="insight-card" style="color:var(--text2);font-style:italic">Analyzing your carbon footprint with AI...</div>';
+  const total = totalToday();
+  const score = getScore(total);
+  const offsetKg = totalOffsetToday();
+  const prompt = `You are an expert carbon footprint analyst for Indian users. Today's logged activities:
+${tl.map(l=>`- ${l.sub}: qty ${l.qty} → ${l.co2} kg CO₂`).join('\n')}
+Total emissions: ${total.toFixed(2)} kg CO₂. Offset today: ${offsetKg.toFixed(2)} kg. Net: ${(total-offsetKg).toFixed(2)} kg. Eco score: ${score}. India avg = 5.2 kg/day.
+
+Give exactly 4 short specific actionable insights. Each max 2 sentences. Be hyper-specific with numbers.
+Return ONLY a JSON array, no markdown, no preamble. Each object: { "text": string, "type": "tip"|"warning"|"praise", "saving": string }`;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, messages:[{role:'user',content:prompt}] })
+    });
+    const data = await res.json();
+    const raw = data.content.map(c=>c.text||'').join('');
+    const insights = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    const styles = { tip:['badge-tip','tip'], warning:['badge-warn','warn'], praise:['badge-praise','praise'] };
+    const labels = { tip:'💡 Tip', warning:'⚠ Heads up', praise:'✓ Great job' };
+    list.innerHTML = insights.map(i => {
+      const [bc, ic] = styles[i.type] || styles.tip;
+      return `<div class="insight-card ${ic}">
+        <span class="insight-badge ${bc}">${labels[i.type]||'💡 Tip'}</span>
+        ${i.text}
+        ${i.saving?`<div class="insight-saving">→ ${i.saving}</div>`:''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="insight-card warn">Could not load AI insights. Make sure you\'re using this on claude.ai.</div>';
+  }
+  btn.disabled = false; btn.textContent = '✦ Regenerate insights';
+}
+
+const ALL_TABS = ['dashboard','log','insights','offset','leaderboard','share'];
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',ALL_TABS[i]===tab));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab==='share') { renderShareCard(); renderHistory(); renderTrendChart(); }
+  if (tab==='insights') renderInsightScore();
+  if (tab==='offset') renderOffsets();
+  if (tab==='leaderboard') { if (lbName) document.getElementById('lb-name-input').value=lbName; loadLeaderboard(); }
+}
+
+function renderAll() { renderMetrics(); renderCatBars(); renderCompare(); renderTodayLog(); renderInsightScore(); }
+
+if (lbName) document.getElementById('lb-name-input') && (document.getElementById('lb-name-input').value = lbName);
+updateSubcat();
+renderAll();
+</script>
+</body>
+</html>
